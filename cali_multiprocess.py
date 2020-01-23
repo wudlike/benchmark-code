@@ -24,9 +24,7 @@ args = parser.parse_args()
 
 config = vars(args)
 
-llist, Cl_EE = np.loadtxt(
-    r'/home/wudl/one_freq/data/CMB_r/r_0.01/test_totCls.dat').T[[0, 2]]
-
+llist, Cl_EE = np.loadtxt(r'/home/wudl/one_freq/data/CMB_r/r_0.01/test_totCls.dat').T[[0, 2]]
 # llist, Cl_EE = np.loadtxt(r'C:/Users/wudl/Desktop/recent work/test/r_0.1/test_totCls.dat').T[[0,2]]
 Cl_EE = Cl_EE/(llist*(llist+1)/(2*np.pi))
 func = interp1d(llist, Cl_EE, kind='linear',
@@ -72,8 +70,9 @@ def delta_Cl():
     sigma = 1/60*np.pi/180/np.sqrt(8*np.log(2))  # rad
     alpha_s = 2**fact_alpha/60*np.pi/180/np.sqrt(8*np.log(2))  # rad
     fac_B = A_s**2/quad(fac_B_fun(alpha_s), 0, np.inf)[0]
-    print('alpha_s:>>> ', alpha_s)
-    print("fac_B:>>> ", fac_B)
+    if rank == 0:
+        print('alpha_s:>>> ', alpha_s)
+        print("fac_B:>>> ", fac_B)
     sum_B = 0
     for l1 in np.arange(data[0],data[1]):
         l = np.tile(np.arange(lmin, lmax), (4*l1+10, 1)).T
@@ -91,17 +90,18 @@ def delta_Cl():
             print(rank,l1)
     return sum_B
 
-print('\n','*'*10)
-print('running...')
-print("Time start at: %s" % time.ctime())
-start_t = time.time()
 lmin = config['lmin']
 lmax = config['lmax']
 A_s = config['As']
 fact_alpha = config['coherence scale']  # from 2^2 to 2^8
 if rank == 0:
+    print('\n','*'*10)
+    print('running...')
+    print("Time start at: %s" % time.ctime())
+    start_t = time.time()    
     data = binary_split(nprocs)
-    print(data)
+    print('number of processes: ',nprocs)
+    print('process interval: ',data)
 else:
     data = None
 data = comm.scatter(data, root=0)
@@ -111,7 +111,7 @@ if rank == 0:
     ell_B = np.arange(lmin, lmax)
     sum_B = np.array(np.sum(sum_B,axis=0))
     delta_B = (ell_B*(ell_B+1)/(2*np.pi)*sum_B)**(1/2)
-    np.savetxt('calib_'+str(lmax)+'_'+str(fact_alpha)+'.txt', delta_B)
+    np.savetxt('../data/calib_'+str(lmax)+'_'+str(2**fact_alpha)+'.txt', delta_B)
     end_t = time.time()
     print('Time costs:>>> %.4f mins' % ((end_t-start_t)/60))
     print("Time end at: %s" % time.ctime())
